@@ -3,23 +3,18 @@ import torch.nn as nn
 import torchvision
 import torchvision.datasets as datasets
 import numpy as np
+from torchvision import transforms
 from reinforce import Reinforce
 from reinforce import Reward
 
 #def model():
 
 def policy_network(state, max_layers):
-    nas_cell = nn.LSTM(state,100,4*max_layers)
-    outputs, state = nas_cell(state) # output = tensor of shape (batch_size, seq_length, hidden_size)
 
-    bias = np.array([0.05]*4*max_layers)
-    print("bias")
-    print(bias)
-    print(outputs)
-    outputs = outputs+bias
-    print("outputs and bias")
-    print(bias)
-    print(outputs)
+    nas_cell = nn.LSTM(4*max_layers, 100, num_layers=max_layers, bias=True)
+    outputs, state = nas_cell(state) # output = tensor of shape (batch_size, seq_length, hidden_size)
+    print(outputs[:,-1:,:])
+    return outputs[:,-1:,:]
 
 
 def train_arch(trainset, validset):
@@ -31,22 +26,14 @@ def train_arch(trainset, validset):
     total_rewards = 0
     state = np.array([[10.0, 128.0, 1.0, 1.0] * max_layers], dtype=np.float32)
 
-    input_size = 4 * max_layers
-    hidden_size = 100
-    #output_size =
-    #batch_size =
-    #length =
-
-    _finder = nn.LSTM(input_size, hidden_size, num_layers=max_layers, bias = True)
-
-    reinforce = Reinforce(_finder,max_layers, global_step) # only initialize
+    reinforce = Reinforce(policy_network,max_layers, global_step) # only initialize
 
     pre_acc = 0.0 # 이전 세대의 accuracy
     for episode in range(MAX_EPISODES):
         action = reinforce.get_action(state)
         print("ca:", action)
         if all(ai>0 for ai in action[0][0]):
-            reward, pre_acc = Reward.get_reward(action,pre_acc,validset)
+            reward, pre_acc = Reward.get_reward(action,pre_acc,trainset,validset)
             print("====>", reward, pre_acc)
         else:
             reward = -1.0
@@ -69,16 +56,36 @@ def train_arch(trainset, validset):
 
 
 def main():
-    _mnist_train = datasets.MNIST(root='./data', train=True, download=True, transform = None) # have to add transform
-    _mnist_test = datasets.MNIST(root='./data', train=False, download=True, transform = None) # have to add transform
+    normalize = transforms.Normalize((0.1307,), (0.3081,))  # MNIST
 
-    train_valid = list(range(_mnist_train))
+    # define transforms
+    valid_transform = transforms.Compose([
+        transforms.ToTensor(),
+        normalize
+    ])
+    train_transform = transforms.Compose([
+        transforms.ToTensor(),
+        normalize])
+
+    _mnist_train = datasets.MNIST(root='./data', train=True, download=True,
+                                  transform=train_transform)  # have to add transform
+    _mnist_test = datasets.MNIST(root='./data', train=False, download=True,
+                                 transform=valid_transform)  # have to add transform
+
+    train_valid = list(range(len(_mnist_train)))
     split = int(np.floor(0.2 * len(_mnist_train)))
 
+    np.random.seed(1)
+    np.random.shuffle(train_valid)
+
+    train_idx, valid_idx = train_valid[split:], train_valid[:split]
+
+    train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_idx)
+    valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(valid_idx)
     mnist_train = torch.utils.data.DataLoader(
-      _mnist_train, sampler=torch.utils.data.sampler.SubsetRandomSampler(train_valid[:split]),batch_size=100, num_workers=1)
+        _mnist_train, batch_size=100, num_workers=1, sampler=train_sampler)
     mnist_valid = torch.utils.data.DataLoader(
-        _mnist_test, sampler=torch.utils.data.sampler.SubsetRandomSampler(train_valid[split:len(_mnist_train)]), batch_size=100, num_workers=1)
+        _mnist_train, batch_size=100, num_workers=1, sampler=valid_sampler)
 
     train_arch(mnist_train, mnist_valid)
 

@@ -3,12 +3,14 @@ import torch.nn as nn
 import random
 import numpy as np
 from cnn import CNN
+from torch.autograd import Variable
+
 
 class Reinforce(nn.Module):
-    def __init__(self,_finder, max_layers, global_step,
+    def __init__(self,policy_network, max_layers, global_step,
                  division_rate=100.0, reg_param=0.001, discount_factor=0.99, exploration=0.3):
 
-        self._finder=_finder
+        self.policy_network=policy_network
         self.max_layers = max_layers
         self.global_step = global_step
         self.division_rate = division_rate
@@ -25,7 +27,7 @@ class Reinforce(nn.Module):
         #model input
         self.states = np.array([[10.0, 128.0, 1.0, 1.0] * max_layers], dtype=np.float32)
         # predict_actions
-        self.policy_outputs = self._finder(self.states, self.max_layers)
+        self.policy_outputs = self.policy_network(self.states, self.max_layers)
         self.action_scores = tf.identify(self.policy_outputs)
         self.predicted_action = tf.case(tf.scalar_mul(self.division_rate, self.action_scores))
 
@@ -46,7 +48,8 @@ class Reinforce(nn.Module):
 
 
     def get_action(self, state): # action 반환
-        return
+
+        return self.sess.run(self.predicted_action, {self.states:state})
 
     def storeRollout(self, state, reward):
         self.reward_buffer.append(reward)
@@ -65,21 +68,51 @@ class Reward(nn.Module): # net_manater.py
         self.max_step_per_action = max_step_per_action
         self.dropout_rate=dropout_rate
 
-    def get_reward(self, action,pre_acc,validset):
+    def get_reward(self, action,pre_acc,trainset,validset):
 
         action=[action[0][0][x:x+4] for x in range(0, len(action[0][0]),4)]
         cnn_drop_rate = [c[3] for c in action]
 
         # criterion, optimizer, train(loss minimize)
-        model = CNN(self.num_input, self.num_classes, action)
+        model = CNN(num_input=784,num_classes=10,action=action)
         # model.cuda
         criterion = nn.CrossEntropyLoss()
-        optimizer = torch.optim.Adam(
-            model.parameters(),
-            self.learning_rate)
+        optimizer = torch.optim.Adam(model.parameters(),self.learning_rate)
 
-        for steps in range(self.max_step_per_action):
-           batch_X, batch_y =
+        for steps, (input, target) in enumerate(trainset):
+            model.train()
+            n = input.size(0)
+            input = Variable(input, requires_grad = False)
+            target = Variable(target, requires_grad = False)
+
+            logits = model(input)
+            loss = criterion(logits, target)
+            loss.backward()
+            optimizer.step()
+
+            if steps % 100 == 0 :
+                acc = model.accuracy
+                print("Step " + str(steps) +
+                                  ", Minibatch Loss= " + "{:.4f}".format(loss) +
+                                  ", Current accuracy= " + "{:.3f}".format(acc))
+
+        for steps, (input, target) in enumerate(validset):
+            input = Variable(input, requires_grad=False)
+            target = Variable(target, requires_grad=False)
+
+            logits = model(input)
+            acc_ = model.accuracy
+
+        if acc_ - pre_acc <= 0.01:
+            return acc_, acc_
+        else:
+            return 0.01, acc_
+
+
+
+
+
+
 
 
 
