@@ -50,12 +50,12 @@ def main():
     for steps, (input, target) in enumerate(mnist_valid):
         input = torch.FloatTensor(input)
         target = torch.FloatTensor(target)
-        print(input)
-        print(target)
+        #print(input)
+        #print(target)
         input = Variable(input, volatile=True)
         target = Variable(target, volatile=True)
 
-def policy_network(max_layers):
+def policy_network(state,max_layers):
     #encoder = nn.Embedding(4*max_layers, 100)
     nas_cell = nn.LSTMCell(8, 100)
     #input  = torch.randn(8,3,8) # seq_len, batch, input_size
@@ -69,29 +69,38 @@ def policy_network(max_layers):
         hx, cx = nas_cell(input[i], (h0,c0)) # output = tensor of shape (batch_size, seq_length, hidden_size)
         out.append(hx)
 
-    print(out)
-    print(np.shape(out))
+    #print(out)
+    #print(np.shape(out))
 
 
-    lstm = nn.LSTM(input_size=8, hidden_size=100, num_layers=1, batch_first=True)
-    h0 = torch.randn(1, 1, 100)
-    c0 = torch.randn(1,1,100)
+    #lstm = nn.LSTM(input_size=8, hidden_size=100, num_layers=1, batch_first=True)
+    lstm = nn.RNN(input_size= 8,hidden_size= 100,num_layers=1, batch_first=True)
 
-    output,(ht,ct) = lstm(out)
+    input = torch.randn(8, 100,8)
+    h0 = torch.randn(1, 100, 100)
+    c0 = torch.randn(1,100,100)
 
-    print(output.data)
+
+    print("finding...")
+    output,hidden = lstm(input,out)
+
+    #print(output.data)
+    print("output")
+    print(output)
 
 
-    print(out[:,-1:,:])
+    #print(out[:,-1:,:])
     return out[:,-1:,:]
 
 if __name__ == '__main__':
+    # one episode = result of controller.. 그게 아니면 gradient가 action이 되어서 조금씩 optimal로 움직여야함..
+    #
     state = np.array([[10.0, 128.0, 1.0, 1.0]*2], dtype=np.float64)
-    print(state)
-    print(np.shape(state))
+    #print(state)
+    #print(np.shape(state))
     max_layer = 2
     state = torch.tensor(state, requires_grad = False)
-    policy_network(max_layer)
+    policy_network(state,max_layer)
 
 
     # main()
