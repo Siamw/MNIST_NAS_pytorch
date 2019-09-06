@@ -36,7 +36,7 @@ class Reinforce(nn.Module):
         #compute discounts
         self.discounted_rewards = np.array([None,])
         #policy network
-        self.logprobs = self._finder(self.states, self.max_layers)
+        self.logprobs = self.policy_network(self.states, self.max_layers)
         #compute policy loss and regularization loss
 
     def cal_

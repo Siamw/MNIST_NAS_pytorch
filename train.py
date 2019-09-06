@@ -11,10 +11,24 @@ from reinforce import Reward
 
 def policy_network(state, max_layers):
 
-    nas_cell = nn.LSTM(4*max_layers, 100, num_layers=max_layers, bias=True)
-    outputs, state = nas_cell(state) # output = tensor of shape (batch_size, seq_length, hidden_size)
-    print(outputs[:,-1:,:])
-    return outputs[:,-1:,:]
+    nas_cell = nn.LSTMCell(8, 100)
+    fc = nn.Linear(100,8, bias=None)
+    state = state[0][:]
+    state = state.reshape(1,8)
+    input = torch.stack((state,state,state,state,state,state,state,state), dim = 0)
+    output = torch.empty((8,100,8))
+
+    for i in range(8):
+        hx, cx = nas_cell(input[i])
+        output[i] = fc(hx)
+
+    print("finding...")
+    output_=output[:,-1:,:]
+    print(output[:,-1:,:])
+    #print(output_[-1:,:,:]*100) #******************* have to do this
+
+    #print(out[:,-1:,:])
+    return output[:,-1:,:]
 
 
 def train_arch(trainset, validset):
@@ -52,8 +66,6 @@ def train_arch(trainset, validset):
         log.close()
         print(log_str)
         """
-
-
 
 def main():
     normalize = transforms.Normalize((0.1307,), (0.3081,))  # MNIST

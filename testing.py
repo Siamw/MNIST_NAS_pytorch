@@ -4,6 +4,7 @@ import torchvision
 import torchvision.datasets as datasets
 from torchvision import transforms
 import numpy as np
+import random
 
 import keyword
 
@@ -56,48 +57,37 @@ def main():
         target = Variable(target, volatile=True)
 
 def policy_network(state,max_layers):
-    #encoder = nn.Embedding(4*max_layers, 100)
+
     nas_cell = nn.LSTMCell(8, 100)
-    #input  = torch.randn(8,3,8) # seq_len, batch, input_size
-    input= torch.randn(8,1,8)
-    h0 = torch.zeros(1, 100)
-    c0 = torch.zeros(1, 100)
+    fc = nn.Linear(100,8, bias=None)
+    state = state[0][:]
+    print(state)
+    state = state.reshape(1,8)
 
-    out = []
+    input = torch.stack((state,state,state,state,state,state,state,state), dim = 0)
 
+    output = torch.empty((8,100,8))
     for i in range(8):
-        hx, cx = nas_cell(input[i], (h0,c0)) # output = tensor of shape (batch_size, seq_length, hidden_size)
-        out.append(hx)
-
-    #print(out)
-    #print(np.shape(out))
-
-
-    #lstm = nn.LSTM(input_size=8, hidden_size=100, num_layers=1, batch_first=True)
-    lstm = nn.RNN(input_size= 8,hidden_size= 100,num_layers=1, batch_first=True)
-
-    input = torch.randn(8, 100,8)
-    h0 = torch.randn(1, 100, 100)
-    c0 = torch.randn(1,100,100)
-
+        hx, cx = nas_cell(input[i])
+        print(hx)
+        print(cx)
+        print(" edfdsfasedfasefasefsef")
+        output[i] = fc(hx)
 
     print("finding...")
-    output,hidden = lstm(input,out)
-
-    #print(output.data)
-    print("output")
-    print(output)
-
+    output_=output[:,-1:,:]
+    print(output[:,-1:,:])
+    #print(output_[-1:,:,:]*100) #******************* have to do this
 
     #print(out[:,-1:,:])
-    return out[:,-1:,:]
+
+    return output[:,-1:,:]
 
 if __name__ == '__main__':
+    print(np.array([[random.sample(range(1,35),8)]]))
     # one episode = result of controller.. 그게 아니면 gradient가 action이 되어서 조금씩 optimal로 움직여야함..
-    #
-    state = np.array([[10.0, 128.0, 1.0, 1.0]*2], dtype=np.float64)
-    #print(state)
-    #print(np.shape(state))
+
+    state=np.array([[10.0, 128.0, 1.0, 1.0] * 2], dtype=np.float32)
     max_layer = 2
     state = torch.tensor(state, requires_grad = False)
     policy_network(state,max_layer)
