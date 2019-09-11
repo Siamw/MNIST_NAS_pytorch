@@ -5,7 +5,7 @@ import torchvision.datasets as datasets
 from torchvision import transforms
 import numpy as np
 import random
-
+import torch.nn.functional as F
 import keyword
 
 import tensorflow as tf
@@ -51,14 +51,52 @@ def main():
     for steps, (input, target) in enumerate(mnist_valid):
         input = torch.FloatTensor(input)
         target = torch.FloatTensor(target)
-        #print(input)
-        #print(target)
+
         input = Variable(input, volatile=True)
         target = Variable(target, volatile=True)
 
-def policy_network(state,max_layers):
+def policy_network(state,max_lay):
 
-    nas_cell = nn.LSTMCell(8, 100)
+    nas_cell = nn.LSTM(input_size=8, hidden_size=128, num_layers=2)
+    fc = nn.Linear(128,8, bias=None)
+    print(state)
+
+    h_0 = torch.randn(2,1,128)
+    c_0 = torch.randn(2,1,128)
+
+    output, (hx, cx) = nas_cell(state.unsqueeze(0), (h_0,c_0))
+
+    output = fc(output)
+
+    #output = F.softmax(output,2)
+
+    output = output[:,-1:,:] * 100
+
+    print("after softmax:", output)
+
+    print(output[:,-1,:])
+    output = output.to(dtype=torch.int64)
+    return output
+
+if __name__ == '__main__':
+    state=np.array([[10.0, 128.0, 1.0, 1.0] * 2], dtype=np.float32)
+    max_layer = 2
+    state = torch.tensor(state, requires_grad = False)
+    action = policy_network(state,max_layer)
+    print("action : ", action[0])
+
+    #cross_entropy_loss = F.nll_loss(F.softmax(action[:, -1, :]), state)
+    #print("ceL: ",cross_entropy_loss)
+    #pg_loss = tf.reduce_mean(cross_entropy_loss)
+    #print("pgL: ",pg_loss)
+    #reg_loss = tf.reduce_sum([tf.reduce_sum(tf.square(x)) for x in policy_network_variables])  # Regularization
+    #loss = pg_loss + reg_param * reg_loss
+
+
+
+
+    """
+        nas_cell = nn.LSTMCell(input_size=8, hidden_size=100, max_layers=2)
     fc = nn.Linear(100,8, bias=None)
     state = state[0][:]
     print(state)
@@ -82,15 +120,4 @@ def policy_network(state,max_layers):
     #print(out[:,-1:,:])
 
     return output[:,-1:,:]
-
-if __name__ == '__main__':
-    print(np.array([[random.sample(range(1,35),8)]]))
-    # one episode = result of controller.. 그게 아니면 gradient가 action이 되어서 조금씩 optimal로 움직여야함..
-
-    state=np.array([[10.0, 128.0, 1.0, 1.0] * 2], dtype=np.float32)
-    max_layer = 2
-    state = torch.tensor(state, requires_grad = False)
-    policy_network(state,max_layer)
-
-
-    # main()
+    """# main()
