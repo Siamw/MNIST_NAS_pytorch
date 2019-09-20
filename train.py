@@ -1,63 +1,71 @@
 import torch
 import torch.nn as nn
 import torchvision
+import argparse
 import torchvision.datasets as datasets
 import numpy as np
 from torchvision import transforms
 from reinforce import Reinforce
 from reinforce import Reward
+from torch.distributions import Bernoulli
+import torch.nn.functional as F
 
-#def model():
+parser = argparse.ArgumentParser()
+parser.add_argument('--data_path', type = str, default ='./data' )
+parser.add_argument('--batch_size', type = int, default=100, help="batch size")
+parser.add_argument('--lr', type=float, default= 5e-2, help="weights learning rate")
+#parser.add_argument('--gpus', default='0,1,2,3', help = "gpu device id")
+parser.add_argument('--epochs', type = int, default = 100)
+parser.add_argument('--max_layers', type = int, default = 2)
+parser.add_argument('--channels', type = int, default = 16)
+args = parser.parse_args()
 
-def policy_network(state, max_layers):
+args.max_layers = int(args.max_layers)
+#args.gpus = [int(s) for s in args.gpus.split(',')]
 
-    nas_cell = nn.LSTM(input_size=8, hidden_size=128, num_layers=max_layers)
 
-    h_0 = torch.randn(2, 1, 100)
-    c_0 = torch.randn(2, 1, 100)
-
-    output, (hx, cx) = nas_cell(state.unsqueeze(0), (h_0, c_0))
-
-    print("finding...")
-
-    print(output[:, -1:, :])
-    return output[:, -1:, :]
 
 def train_arch(trainset, validset):
     max_layers = 2
     global_step = 500
     MAX_EPISODES = 2500
     step = 0
-    pre_acc = 0.0
-    total_rewards = 0
-    state = np.array([[10.0, 128.0, 1.0, 1.0] * max_layers], dtype=np.float32)
-
-    reinforce = Reinforce(policy_network,max_layers, global_step) # only initialize
-
     pre_acc = 0.0 # 이전 세대의 accuracy
+
+    state = torch.tensor([[10.0, 128.0, 1.0, 1.0] * max_layers])
+
+    total_rewards = 0
+
+    state_h, action_h, reward_h  =[],[],[]
+
+    reinforce = Reinforce(state, max_layers, global_step) # only initialize
+    Rewards = Reward(num_input= 784, num_classes=10, learning_rate=0.001, batch_size=100)
     for episode in range(MAX_EPISODES):
-        action = reinforce.get_action(state)
+        step += 1
+        action = reinforce.get_action()
+        #m = Bernoulli(action)
         print("ca:", action)
+        # 선택한 행동으로 환경에서 한 타임스탭 진행 후 샘플 수집
+
         if all(ai>0 for ai in action[0][0]):
-            reward, pre_acc = Reward.get_reward(action,pre_acc,trainset,validset)
+
+            reward, pre_acc = Rewards.get_reward(action,pre_acc,trainset,validset)
+            # 행동과 타임스탭진행후의 샘플이 동일하기 때문에 따로 진행하지 않고 바로 또 넘어가고 ~...
             print("====>", reward, pre_acc)
         else:
             reward = -1.0
-        total_rewards +=reward
+
+
+        score = round(total_rewards,2)
+        print("episode: ", episode, " score: ", reward, "time_step: ", step)
+
 
         state = action[0]
         reinforce.storeRollout(state,reward) # butter에 저장
 
-        # loss 출력 위한 코드
-        """
-        step += 1
-        ls = reinforce.train_step(1)
-        log_str = "current time:  "+str(datetime.datetime.now().time())+" episode:  "+str(i_episode)+" loss:  "+str(ls)+" last_state:  "+str(state)+" last_reward:  "+str(reward)+"\n"
-        log = open("lg3.txt", "a+")
-        log.write(log_str)
-        log.close()
-        print(log_str)
-        """
+        # 에피소드마다 정책신경망 업데이트
+        reinforce.update_policy(episode, args.batch_size,step)
+
 
 def main():
     normalize = transforms.Normalize((0.1307,), (0.3081,))  # MNIST
@@ -87,12 +95,16 @@ def main():
     train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_idx)
     valid_sampler = torch.utils.data.sampler.SubsetRandomSampler(valid_idx)
     mnist_train = torch.utils.data.DataLoader(
-        _mnist_train, batch_size=100, num_workers=1, sampler=train_sampler)
+        _mnist_train, batch_size=args.batch_size, num_workers=4, sampler=train_sampler)
     mnist_valid = torch.utils.data.DataLoader(
-        _mnist_train, batch_size=100, num_workers=1, sampler=valid_sampler)
+        _mnist_train, batch_size=args.batch_size, num_workers=4, sampler=valid_sampler)
 
     train_arch(mnist_train, mnist_valid)
 
-if __name__ == '__main__':
+if __name__ == '__main__':\
+    # for test
+    #state = np.array([[10.0, 128.0, 1.0, 1.0] * 2], dtype=np.float32)
+    #state = torch.tensor(state, requires_grad=False)
+    #policy_network(state,2)
     main()
 

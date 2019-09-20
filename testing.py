@@ -66,58 +66,26 @@ def policy_network(state,max_lay):
 
     output, (hx, cx) = nas_cell(state.unsqueeze(0), (h_0,c_0))
 
-    output = fc(output)
+    output =output[:, -1:, :]
 
+
+    output = F.sigmoid(fc(output))
+
+    #output = F.softmax(output, 2)
     #output = F.softmax(output,2)
 
-    output = output[:,-1:,:] * 100
-
+    output = output * 100
     print("after softmax:", output)
 
-    print(output[:,-1,:])
+
     output = output.to(dtype=torch.int64)
     return output
 
 if __name__ == '__main__':
-    state=np.array([[10.0, 128.0, 1.0, 1.0] * 2], dtype=np.float32)
+    state=torch.tensor([[10.0, 128.0, 1.0, 1.0] * 2])
     max_layer = 2
-    state = torch.tensor(state, requires_grad = False)
+    #state = torch.tensor(state, requires_grad = False)
     action = policy_network(state,max_layer)
     print("action : ", action[0])
 
-    #cross_entropy_loss = F.nll_loss(F.softmax(action[:, -1, :]), state)
-    #print("ceL: ",cross_entropy_loss)
-    #pg_loss = tf.reduce_mean(cross_entropy_loss)
-    #print("pgL: ",pg_loss)
-    #reg_loss = tf.reduce_sum([tf.reduce_sum(tf.square(x)) for x in policy_network_variables])  # Regularization
-    #loss = pg_loss + reg_param * reg_loss
 
-
-
-
-    """
-        nas_cell = nn.LSTMCell(input_size=8, hidden_size=100, max_layers=2)
-    fc = nn.Linear(100,8, bias=None)
-    state = state[0][:]
-    print(state)
-    state = state.reshape(1,8)
-
-    input = torch.stack((state,state,state,state,state,state,state,state), dim = 0)
-
-    output = torch.empty((8,100,8))
-    for i in range(8):
-        hx, cx = nas_cell(input[i])
-        print(hx)
-        print(cx)
-        print(" edfdsfasedfasefasefsef")
-        output[i] = fc(hx)
-
-    print("finding...")
-    output_=output[:,-1:,:]
-    print(output[:,-1:,:])
-    #print(output_[-1:,:,:]*100) #******************* have to do this
-
-    #print(out[:,-1:,:])
-
-    return output[:,-1:,:]
-    """# main()
