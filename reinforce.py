@@ -19,6 +19,7 @@ class policy_network(nn.Module):
         self.c_0 = torch.randn(2, 1, 100)
 
     def forward(self,new_state):
+        print(new_state.shape)
         output, (hx, cx) = self.nas_cell(new_state.unsqueeze(0), (self.h_0, self.c_0))
 
         output = output[:, -1:, :]
@@ -92,12 +93,13 @@ class Reinforce(nn.Module):
 
 
     def get_action(self,new_state): # action 반환
-        new_state = np.expand_dims(new_state, axis=0) #TODO:여기 고쳐야됨
+        print(new_state.shape)
+        #new_state = new_state.reshape(1,1,8) #TODO:여기 고쳐야됨
         output = self.policy_network(new_state)
         print(output)
         output = torch.tensor(output)#, requires_grad=False)
         output = torch.mul(output,100)
-        predicted_action = output.to(dtype=torch.int64)
+        predicted_action = output.to(dtype=torch.int32)
         #state로 계산
         return predicted_action
     def storeRollout(self, state, reward):

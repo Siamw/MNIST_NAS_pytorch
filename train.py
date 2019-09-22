@@ -40,11 +40,13 @@ def train_arch(trainset, validset):
 
     reinforce = Reinforce(state, max_layers, global_step) # only initialize
     Rewards = Reward(num_input= 784, num_classes=10, learning_rate=0.001, batch_size=100)
-    action = state
+
     for episode in range(MAX_EPISODES):
         print("episode: ",episode)
         step += 1
-        action = reinforce.get_action(action)
+        #print(action.shape)
+        state = state.to(dtype=torch.float)
+        action = reinforce.get_action(state)
         #m = Bernoulli(action)
         print("ca:", action)
         # 선택한 행동으로 환경에서 한 타임스탭 진행 후 샘플 수집
