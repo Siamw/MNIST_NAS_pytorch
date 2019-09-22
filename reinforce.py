@@ -18,8 +18,8 @@ class policy_network(nn.Module):
         self.h_0 = torch.randn(2, 1, 100)
         self.c_0 = torch.randn(2, 1, 100)
 
-    def forward(self):
-        output, (hx, cx) = self.nas_cell(self.state.unsqueeze(0), (self.h_0, self.c_0))
+    def forward(self,new_state):
+        output, (hx, cx) = self.nas_cell(new_state.unsqueeze(0), (self.h_0, self.c_0))
 
         output = output[:, -1:, :]
         output = F.sigmoid(self.fc(output))
@@ -91,10 +91,9 @@ class Reinforce(nn.Module):
             self.state_buffer = []
 
 
-    def get_action(self): # action 반환
-
-        # to tensor
-        output = self.policy_network()
+    def get_action(self,new_state): # action 반환
+        new_state = np.expand_dims(new_state, axis=0) #TODO:여기 고쳐야됨
+        output = self.policy_network(new_state)
         print(output)
         output = torch.tensor(output)#, requires_grad=False)
         output = torch.mul(output,100)
@@ -128,44 +127,59 @@ class Reward(nn.Module): # net_manater.py
         # model.cuda
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(model.parameters(),self.learning_rate)
-
+        model.train()
         for steps, (input, target) in enumerate(trainset):
-            model.train()
-            n = input.size(0)
-            print("ddddddddd")
-            print(input.shape)
-            print(target.shape)
-            input = Variable(input, requires_grad = False)
-            target = Variable(target, requires_grad = False)
-
-            print(input.shape)
-            #print(input)
-            logits = model(input)
-            print(logits.shape)
-            optimizer.zero_grad()
-            loss = criterion(logits, target)
-            loss.backward()
-            optimizer.step()
-
-            if steps % 100 == 0 :
-                acc = model.accuracy
-                print("Step " + str(steps) +
-                                  ", Minibatch Loss= " + "{:.4f}".format(loss) +
-                                  ", Current accuracy= " + "{:.3f}".format(acc))
-
-        for steps, (input, target) in enumerate(validset):
             input = Variable(input, requires_grad=False)
             target = Variable(target, requires_grad=False)
 
             logits = model(input)
-            acc_ = model.accuracy
+            loss = criterion(logits, target)
 
-        if acc_ - pre_acc <= 0.01:
-            return acc_, acc_
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if steps % 50 == 0 :
+                print("Step " + str(steps) +
+                                  ", Minibatch Loss= " + "{:.4f}".format(loss))
+
+        best_acc = 0.
+        for steps, (input, target) in enumerate(validset):
+            input = Variable(input, requires_grad=False)
+            target = Variable(target, requires_grad=False)
+
+            output = model(input)
+            top1 = self.accuracy(output, target, topk=(1,))
+            top1 = top1[0].item()
+            #print(top1)
+            if (best_acc < top1):
+                best_acc = top1
+
+        if best_acc - pre_acc <= 0.01:
+            return best_acc, best_acc
         else:
-            return 0.01, acc_
+            return 0.01, best_acc
 
 
+    def accuracy(self,output, target, topk=(1,)):
+        """ Computes the precision@k for the specified values of k """
+        maxk = max(topk)
+        batch_size = target.size(0)
+
+        _, pred = output.topk(maxk, 1, True, True)
+        pred = pred.t()
+        # one-hot case
+        if target.ndimension() > 1:
+            target = target.max(1)[1]
+
+        correct = pred.eq(target.view(1, -1).expand_as(pred))
+
+        res = []
+        for k in topk:
+            correct_k = correct[:k].view(-1).float().sum(0)
+            res.append(correct_k.mul_(1.0 / batch_size))
+
+        return res
 
     '''
       # cross entropy + reg_param * regularization loss . reg 헷갈리니 일단 빼고 진행

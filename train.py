@@ -28,7 +28,7 @@ args.max_layers = int(args.max_layers)
 def train_arch(trainset, validset):
     max_layers = 2
     global_step = 500
-    MAX_EPISODES = 2500
+    MAX_EPISODES = 100
     step = 0
     pre_acc = 0.0 # 이전 세대의 accuracy
 
@@ -40,9 +40,11 @@ def train_arch(trainset, validset):
 
     reinforce = Reinforce(state, max_layers, global_step) # only initialize
     Rewards = Reward(num_input= 784, num_classes=10, learning_rate=0.001, batch_size=100)
+    action = state
     for episode in range(MAX_EPISODES):
+        print("episode: ",episode)
         step += 1
-        action = reinforce.get_action()
+        action = reinforce.get_action(action)
         #m = Bernoulli(action)
         print("ca:", action)
         # 선택한 행동으로 환경에서 한 타임스탭 진행 후 샘플 수집
@@ -57,14 +59,13 @@ def train_arch(trainset, validset):
 
 
         score = round(total_rewards,2)
-        print("episode: ", episode, " score: ", reward, "time_step: ", step)
-
+        print(" score: ", reward, "time_step: ", step)
 
         state = action[0]
         reinforce.storeRollout(state,reward) # butter에 저장
 
         # 에피소드마다 정책신경망 업데이트
-        reinforce.update_policy(episode, args.batch_size,step)
+        reinforce.update_policy(episode, args.batch_size, step)
 
 
 def main():

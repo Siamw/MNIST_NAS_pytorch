@@ -25,11 +25,12 @@ class CNN(nn.Module):
             else :
                 for_pd = filter_size.item()
             padding = int(for_pd/2 - 0.5)
+            padding_pool = int((max_pool_ksize[i].item()+1)/2 - 0.5)
             conv = torch.nn.Conv2d(self.num_input, cnn_num_filters[i].item(),filter_size.item(),stride=1, padding = padding)
             #init.xavier_uniform_(conv_out.weight)
             #init.constant_(conv_out.bias,0.1)
             relu = torch.nn.ReLU(conv)
-            maxpool = torch.nn.MaxPool2d(max_pool_ksize[i].item(), stride=1, padding=max_pool_ksize[i].item()//2)
+            maxpool = torch.nn.MaxPool2d(max_pool_ksize[i].item(), stride=None, padding=padding_pool)
 
             dropout = nn.Dropout(dropout_rate[i].item()/100.0)
 
@@ -41,13 +42,14 @@ class CNN(nn.Module):
             self.num_input = cnn_num_filters[i].item()
 
         self.net = nn.Sequential(*modules)
+        self.classifier = nn.Linear(cnn_num_filters[-1], self.num_classes)
 
     def forward(self, input):
-        print("net \n",self.net)
+        #print("net \n",self.net)
         x = self.net(input)
-        x = torch.flatten(x)
-        classifier = nn.Linear(len(x), self.num_classes)
-        logit = classifier(x)
+        input_shape = x.shape
+        x = x.view(input_shape[0], -1)
+        logit = self.classifier(x)
         return logit
 
 '''
