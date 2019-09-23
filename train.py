@@ -28,7 +28,7 @@ args.max_layers = int(args.max_layers)
 def train_arch(trainset, validset):
     max_layers = 2
     global_step = 500
-    MAX_EPISODES = 100
+    MAX_EPISODES = 2500
     step = 0
     pre_acc = 0.0 # 이전 세대의 accuracy
 

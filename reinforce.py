@@ -109,7 +109,7 @@ class Reinforce(nn.Module):
 
 class Reward(nn.Module): # net_manater.py
     def __init__(self, num_input, num_classes, learning_rate, batch_size,
-                 max_step_per_action=5500*3,
+                 max_step_per_action=10*3,
                  dropout_rate=0.85):
         super().__init__()
         self.num_input = num_input
@@ -130,18 +130,19 @@ class Reward(nn.Module): # net_manater.py
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(model.parameters(),self.learning_rate)
         model.train()
-        for steps, (input, target) in enumerate(trainset):
-            input = Variable(input, requires_grad=False)
-            target = Variable(target, requires_grad=False)
+        for i in range(self.max_step_per_action):
+            for steps, (input, target) in enumerate(trainset):
+                input = Variable(input, requires_grad=False)
+                target = Variable(target, requires_grad=False)
 
-            logits = model(input)
-            loss = criterion(logits, target)
+                logits = model(input)
+                loss = criterion(logits, target)
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
 
-            if steps % 50 == 0 :
+            if i % 10 == 0 :
                 print("Step " + str(steps) +
                                   ", Minibatch Loss= " + "{:.4f}".format(loss))
 
