@@ -55,7 +55,7 @@ class Reinforce(nn.Module):
 
 
     def update_policy(self,episode): # = train_step
-        batch_size = 2
+        batch_size = 1
         if episode > 0 and (episode+1) % batch_size == 0: # 원래는 % batch_size ... step이 없는거 아닌가 ! ?
             step = batch_size
                 # discount reward
@@ -77,14 +77,13 @@ class Reinforce(nn.Module):
             self.optimizer.zero_grad()
 
             for i in range(step):
-                print("i i i i i i : ",i )
                 state = self.state_buffer[i]
                 reward = self.reward_buffer[i]
                 #reward = torch.FloatTensor([self.reward_buffer[i]])
                 action = self.state_buffer[i]
                 #action = torch.FloatTensor([self.state_buffer[i]]) # in here, state = action
-                print("floatTensor : ",action)
-                print("reward : ", reward)
+                #print("floatTensor : ",action)
+                #print("reward : ", reward)
 
                 probs = torch.log(self.policy_network(self.state))
                 loss = -reward * probs
