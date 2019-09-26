@@ -126,7 +126,9 @@ def main():
                 reward = reward_pool[i]
 
                 probs = policy_net(state)
+                print(probs)
                 m = Bernoulli(probs)
+                print(m)
                 loss = -m.log_prob(action) * reward  # Negtive score function x reward
                 loss.backward()
 

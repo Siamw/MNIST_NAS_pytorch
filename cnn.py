@@ -1,8 +1,6 @@
 import torch
 import torch.nn as nn
-import numpy as np
-from torch.autograd import Variable
-import torch.nn.init as init
+
 
 class CNN(nn.Module):
     def __init__(self, num_input, num_classes, action):
@@ -21,7 +19,7 @@ class CNN(nn.Module):
 
         for i, filter_size in enumerate(cnn_filter_size):
             if filter_size.item() % 2 ==0:
-                for_pd = filter_size.item() + 1
+                for_pd = filter_size.item()+1
             else :
                 for_pd = filter_size.item()
             padding = int(for_pd/2 - 0.5)
@@ -51,13 +49,4 @@ class CNN(nn.Module):
         x = x.view(input_shape[0], -1)
         logit = self.classifier(x)
         return logit
-
-'''
-# for test,
-if __name__ == '__main__':
-    cnn = CNN(784,10,[[[ 1 , 2 , 3 , 4 , 5 , 6 , 7 ,8]]])
-
-    print(cnn)
-
-'''
 
