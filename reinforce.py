@@ -133,8 +133,8 @@ class Reward(nn.Module): # net_manater.py
         model = CNN(num_input=1,num_classes=10,action=action)
         criterion = nn.CrossEntropyLoss()
 
-        model.cuda()
-        criterion.cuda()
+        model = model.cuda()
+        criterion = criterion.cuda()
         cudnn.benchmark = True
 
         optimizer = torch.optim.Adam(model.parameters(),self.learning_rate)
@@ -147,6 +147,7 @@ class Reward(nn.Module): # net_manater.py
 
                 input = Variable(input, requires_grad=False)
                 target = Variable(target, requires_grad=False)
+                target = target.cuda(non_blocking=True)
                 logits = model(input)
                 loss = criterion(logits,target)
                 #loss = criterion(logits, target)
