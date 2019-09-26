@@ -146,6 +146,7 @@ class Reward(nn.Module): # net_manater.py
             for steps, (input, target) in enumerate(trainset):
 
                 input = Variable(input, requires_grad=False)
+                input = input.cuda(non_blocking=True)
                 target = Variable(target, requires_grad=False)
                 target = target.cuda(non_blocking=True)
                 logits = model(input)
